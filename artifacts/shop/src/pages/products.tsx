@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { HeroSlider } from "@/components/hero-slider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
-import { Package, Heart, Share2, ShoppingCart, Star, ChevronLeft, ChevronRight, Tag, Sparkles } from "lucide-react";
+import { Package, Heart, Share2, ShoppingCart, Star, ChevronLeft, ChevronRight, Tag, Sparkles, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Product = {
@@ -23,6 +23,67 @@ type Product = {
   imageUrl: string;
   stock: number;
 };
+
+// ─── New Arrivals Section ───────────────────────────────────────────────────
+function NewArrivalsSection({ products }: { products: Product[] }) {
+  const newest = [...products].sort((a, b) => b.id - a.id).slice(0, 6);
+  if (newest.length === 0) return null;
+
+  return (
+    <div className="w-full mt-10 mb-2">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative rounded-2xl overflow-hidden bg-[#0A0A0A] p-6 sm:p-8">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#F59E0B]/10 via-transparent to-transparent pointer-events-none" />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#F59E0B]/5 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#F59E0B] flex items-center justify-center flex-shrink-0">
+                <Zap className="w-5 h-5 text-black fill-black" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-white">Новинки</h2>
+                <p className="text-xs text-gray-400">Свежие поступления этой недели</p>
+              </div>
+            </div>
+            <Link href="/products">
+              <button className="flex items-center gap-1.5 text-sm font-semibold text-[#F59E0B] hover:text-[#D97706] transition-colors">
+                Смотреть все
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </Link>
+          </div>
+
+          <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {newest.map((product) => (
+              <Link key={product.id} href={`/product/${product.id}`}>
+                <div className="group flex flex-col bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#F59E0B]/40 rounded-xl overflow-hidden transition-all duration-300 cursor-pointer">
+                  <div className="relative overflow-hidden" style={{ aspectRatio: "1/1" }}>
+                    <span className="absolute top-2 left-2 z-10 bg-[#F59E0B] text-black text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-wide">
+                      NEW
+                    </span>
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-90 group-hover:opacity-100"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="p-3">
+                    <h3 className="text-xs font-semibold text-gray-100 line-clamp-2 min-h-[2rem] mb-1.5">
+                      {product.name}
+                    </h3>
+                    <span className="text-sm font-black text-[#F59E0B]">{formatCurrency(product.price)}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Discount Products Carousel ────────────────────────────────────────────
 function DiscountCarousel({ products }: { products: Product[] }) {
@@ -380,6 +441,10 @@ export function ProductsPage() {
   return (
     <div className="animate-in fade-in duration-500 pb-16 bg-gray-50/50 min-h-screen">
       {!hasFilters && <HeroSlider />}
+
+      {!hasFilters && rawProducts && rawProducts.length > 0 && (
+        <NewArrivalsSection products={rawProducts} />
+      )}
 
       {!hasFilters && rawProducts && rawProducts.length > 0 && (
         <DiscountCarousel products={rawProducts} />
