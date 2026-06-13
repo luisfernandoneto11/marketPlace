@@ -6,6 +6,10 @@ import {
   getGetProductsQueryKey,
   useAddToCart,
   getGetCartQueryKey,
+  useGetFavorites,
+  useAddFavorite,
+  useRemoveFavorite,
+  getGetFavoritesQueryKey,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { HeroSlider } from "@/components/hero-slider";
@@ -390,11 +394,17 @@ export function ProductsPage() {
   const category = searchParams.get("category") || undefined;
   const searchQuery = searchParams.get("search") || undefined;
 
-  const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const addToCartMutation = useAddToCart();
+  const addFavoriteMutation = useAddFavorite();
+  const removeFavoriteMutation = useRemoveFavorite();
+
+  const { data: favoritesData } = useGetFavorites({
+    query: { queryKey: getGetFavoritesQueryKey(), enabled: isAuthenticated },
+  });
+  const favorites = new Set((favoritesData ?? []).map((p) => p.id));
 
   const { data: rawProducts, isLoading } = useGetProducts(
     category ? { category } : undefined,
@@ -411,7 +421,16 @@ export function ProductsPage() {
 
   const toggleFavorite = (e: React.MouseEvent, id: number) => {
     e.preventDefault(); e.stopPropagation();
-    setFavorites((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+    if (!isAuthenticated) { setLocation("/login"); return; }
+    if (favorites.has(id)) {
+      removeFavoriteMutation.mutate({ productId: id }, {
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetFavoritesQueryKey() }),
+      });
+    } else {
+      addFavoriteMutation.mutate({ data: { productId: id } }, {
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetFavoritesQueryKey() }),
+      });
+    }
   };
 
   const handleShare = (e: React.MouseEvent, id: number) => {

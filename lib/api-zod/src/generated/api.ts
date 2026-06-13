@@ -190,3 +190,45 @@ export const RemoveFromCartResponse = zod.object({
 })
 
 
+/**
+ * @summary Get user favorites
+ */
+export const GetFavoritesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "price": zod.number(),
+  "category": zod.string(),
+  "stock": zod.number(),
+  "imageUrl": zod.string()
+})
+export const GetFavoritesResponse = zod.array(GetFavoritesResponseItem)
+
+
+/**
+ * @summary Add product to favorites
+ */
+export const AddFavoriteBody = zod.object({
+  "productId": zod.number()
+})
+
+
+/**
+ * @summary Remove product from favorites
+ */
+export const RemoveFavoriteParams = zod.object({
+  "productId": zod.coerce.number()
+})
+
+export const RemoveFavoriteResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "price": zod.number(),
+  "category": zod.string(),
+  "stock": zod.number(),
+  "imageUrl": zod.string()
+})
+export const RemoveFavoriteResponse = zod.array(RemoveFavoriteResponseItem)
+
+

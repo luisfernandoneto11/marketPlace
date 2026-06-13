@@ -71,6 +71,10 @@ export interface RemoveFromCartRequest {
   cartItemId: number;
 }
 
+export interface FavoriteRequest {
+  productId: number;
+}
+
 export type GetProductsParams = {
 category?: string;
 };

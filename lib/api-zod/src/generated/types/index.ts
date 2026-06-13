@@ -11,6 +11,7 @@ export * from './authResponse';
 export * from './cart';
 export * from './cartItem';
 export * from './errorResponse';
+export * from './favoriteRequest';
 export * from './getProductsParams';
 export * from './healthStatus';
 export * from './loginRequest';
