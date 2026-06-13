@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { useGetCart, getGetCartQueryKey, useGetCategories, getGetCategoriesQueryKey } from "@workspace/api-client-react";
+import {
+  useGetCart,
+  useGetFavorites,
+  getGetCartQueryKey,
+  getGetCategoriesQueryKey,
+  getGetFavoritesQueryKey,
+  useGetCategories,
+} from "@workspace/api-client-react";
 import { useAuth } from "../lib/auth";
 import { ShoppingCart, Store, LogOut, Menu, X, Search, ChevronDown, User, Heart } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,15 +26,23 @@ export function Navbar() {
   const { data: cart } = useGetCart({
     query: {
       enabled: isAuthenticated,
-      queryKey: ["cart", isAuthenticated],
-    }
+      queryKey: getGetCartQueryKey(),
+    },
+  });
+
+  const { data: favoritesData } = useGetFavorites({
+    query: {
+      enabled: isAuthenticated,
+      queryKey: getGetFavoritesQueryKey(),
+    },
   });
 
   const { data: categories } = useGetCategories({
-    query: { queryKey: getGetCategoriesQueryKey() }
+    query: { queryKey: getGetCategoriesQueryKey() },
   });
 
-  const cartItemsCount = cart?.items?.reduce((acc, item) => acc + item.quantity, 0) || 0;
+  const cartCount = cart?.items?.reduce((acc, item) => acc + item.quantity, 0) || 0;
+  const favCount = favoritesData?.length || 0;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -44,6 +59,7 @@ export function Navbar() {
 
   const handleLogout = () => {
     logout();
+    queryClient.clear();
     setLocation("/login");
   };
 
@@ -61,33 +77,38 @@ export function Navbar() {
     }
   };
 
+  const handleProtectedNav = (path: string) => {
+    if (!isAuthenticated) { setLocation("/login"); return; }
+    setLocation(path);
+  };
+
   const initials = user?.username?.slice(0, 2).toUpperCase() ?? "U";
 
   return (
     <header className="sticky top-0 z-50 w-full bg-[#0A0A0A] text-white h-16 flex items-center shadow-md">
       <div className="container mx-auto px-4 flex items-center justify-between">
-        
+
         {/* Left: Logo & Categories */}
         <div className="flex items-center gap-6">
           <Link href="/products" className="flex items-center gap-2 text-[#F59E0B] font-bold text-xl tracking-tight">
             <Store className="w-6 h-6 text-[#F59E0B]" />
-            <span>МаркетПлаза</span>
+            <span className="hidden sm:inline">МаркетПлаза</span>
           </Link>
-          
+
           <div className="hidden md:flex relative" ref={categoryRef}>
-            <button 
+            <button
               onClick={() => setIsCategoryOpen(!isCategoryOpen)}
               className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white transition-colors"
             >
               Категории
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className={`w-4 h-4 transition-transform ${isCategoryOpen ? "rotate-180" : ""}`} />
             </button>
-            
+
             {isCategoryOpen && (
               <div className="absolute top-full mt-4 left-0 w-48 bg-[#111827] rounded-xl shadow-xl p-2 z-50">
                 {categories?.map((cat) => (
-                  <button 
-                    key={cat} 
+                  <button
+                    key={cat}
                     onClick={() => navigateToCategory(cat)}
                     className="w-full text-left hover:bg-white/10 rounded-lg px-4 py-2 text-sm text-gray-200 capitalize transition-colors"
                   >
@@ -103,7 +124,7 @@ export function Navbar() {
         <div className="hidden md:flex flex-1 max-w-[400px] min-w-[200px] mx-4">
           <form onSubmit={handleSearch} className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input 
+            <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -113,62 +134,84 @@ export function Navbar() {
           </form>
         </div>
 
-        {/* Right: User Actions */}
-        <div className="hidden md:flex items-center gap-4">
+        {/* Right: Actions */}
+        <div className="hidden md:flex items-center gap-2">
+          {/* Favorites icon — always visible */}
+          <button
+            onClick={() => handleProtectedNav("/favorites")}
+            className="relative flex items-center justify-center w-10 h-10 rounded-full text-gray-300 hover:text-white hover:bg-white/10 transition-all"
+            title="Избранное"
+          >
+            <Heart className={`w-5 h-5 transition-colors ${isAuthenticated && favCount > 0 ? "text-red-400 fill-red-400" : ""}`} />
+            {isAuthenticated && favCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white leading-none">
+                {favCount > 99 ? "99+" : favCount}
+              </span>
+            )}
+          </button>
+
+          {/* Cart icon — always visible */}
+          <button
+            onClick={() => handleProtectedNav("/cart")}
+            className="relative flex items-center justify-center w-10 h-10 rounded-full text-gray-300 hover:text-white hover:bg-white/10 transition-all"
+            title="Корзина"
+          >
+            <ShoppingCart className="w-5 h-5" />
+            {isAuthenticated && cartCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#F59E0B] text-[9px] font-bold text-black leading-none">
+                {cartCount > 99 ? "99+" : cartCount}
+              </span>
+            )}
+          </button>
+
+          {/* User area */}
           {isAuthenticated ? (
-            <div className="flex items-center gap-4">
-              <Link href="/cart" className="relative text-gray-300 hover:text-white transition-colors">
-                <ShoppingCart className="w-6 h-6" />
-                {cartItemsCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#F59E0B] text-[10px] font-bold text-black">
-                    {cartItemsCount}
-                  </span>
-                )}
-              </Link>
-              
-              <div className="relative" ref={userMenuRef}>
-                <button 
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-[#F59E0B] text-black font-bold text-sm hover:scale-105 transition-transform"
-                >
-                  {initials}
-                </button>
-                
-                {isUserMenuOpen && (
-                  <div className="absolute right-0 top-full mt-4 w-56 bg-[#111827] rounded-xl shadow-xl p-2 z-50">
-                    <div className="px-4 py-2">
-                      <p className="text-sm font-semibold text-white truncate">{user?.username}</p>
-                      <p className="text-xs text-gray-400 truncate">{user?.email}</p>
-                    </div>
-                    <div className="h-px bg-gray-700 my-1" />
-                    <Link href="/profile">
-                      <button onClick={() => setIsUserMenuOpen(false)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-white/10 rounded-lg transition-colors">
-                        <User className="w-4 h-4" /> Мой профиль
-                      </button>
-                    </Link>
-                    <Link href="/favorites">
-                      <button onClick={() => setIsUserMenuOpen(false)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-white/10 rounded-lg transition-colors">
-                        <Heart className="w-4 h-4" /> Избранное
-                      </button>
-                    </Link>
-                    <Link href="/cart">
-                      <button onClick={() => setIsUserMenuOpen(false)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-white/10 rounded-lg transition-colors">
-                        <ShoppingCart className="w-4 h-4" /> Корзина
-                      </button>
-                    </Link>
-                    <div className="h-px bg-gray-700 my-1" />
-                    <button 
-                      onClick={() => { setIsUserMenuOpen(false); handleLogout(); }} 
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                    >
-                      <LogOut className="w-4 h-4" /> Выйти
-                    </button>
+            <div className="relative ml-1" ref={userMenuRef}>
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center justify-center w-9 h-9 rounded-full bg-[#F59E0B] text-black font-bold text-sm hover:scale-105 transition-transform"
+              >
+                {initials}
+              </button>
+
+              {isUserMenuOpen && (
+                <div className="absolute right-0 top-full mt-3 w-56 bg-[#111827] rounded-xl shadow-xl p-2 z-50 border border-white/10">
+                  <div className="px-4 py-2">
+                    <p className="text-sm font-semibold text-white truncate">{user?.username}</p>
+                    <p className="text-xs text-gray-400 truncate">{user?.email}</p>
                   </div>
-                )}
-              </div>
+                  <div className="h-px bg-gray-700 my-1" />
+                  <Link href="/profile">
+                    <button onClick={() => setIsUserMenuOpen(false)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-white/10 rounded-lg transition-colors">
+                      <User className="w-4 h-4" /> Мой профиль
+                    </button>
+                  </Link>
+                  <Link href="/favorites">
+                    <button onClick={() => setIsUserMenuOpen(false)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-white/10 rounded-lg transition-colors">
+                      <Heart className="w-4 h-4 text-red-400" />
+                      Избранное
+                      {favCount > 0 && <span className="ml-auto text-xs bg-red-500 text-white px-1.5 py-0.5 rounded-full">{favCount}</span>}
+                    </button>
+                  </Link>
+                  <Link href="/cart">
+                    <button onClick={() => setIsUserMenuOpen(false)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-white/10 rounded-lg transition-colors">
+                      <ShoppingCart className="w-4 h-4" />
+                      Корзина
+                      {cartCount > 0 && <span className="ml-auto text-xs bg-[#F59E0B] text-black px-1.5 py-0.5 rounded-full font-semibold">{cartCount}</span>}
+                    </button>
+                  </Link>
+                  <div className="h-px bg-gray-700 my-1" />
+                  <button
+                    onClick={() => { setIsUserMenuOpen(false); handleLogout(); }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" /> Выйти
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 ml-1">
               <Link href="/login">
                 <button className="px-4 py-1.5 text-sm font-medium text-white border border-white/30 rounded-full hover:bg-white hover:text-black transition-colors">
                   Войти
@@ -183,33 +226,47 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Mobile Menu Toggle */}
-        <div className="md:hidden flex items-center gap-4">
-           {isAuthenticated && (
-              <Link href="/cart" className="relative text-white hover:text-gray-300">
-                <ShoppingCart className="w-6 h-6" />
-                {cartItemsCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#F59E0B] text-[10px] font-bold text-black">
-                    {cartItemsCount}
-                  </span>
-                )}
-              </Link>
-           )}
-           <button 
-             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
-             className="text-white hover:text-gray-300"
-           >
-              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-           </button>
+        {/* Mobile: icons + hamburger */}
+        <div className="md:hidden flex items-center gap-1">
+          <button
+            onClick={() => handleProtectedNav("/favorites")}
+            className="relative flex items-center justify-center w-10 h-10 rounded-full text-gray-300 hover:text-white"
+          >
+            <Heart className={`w-5 h-5 ${isAuthenticated && favCount > 0 ? "text-red-400 fill-red-400" : ""}`} />
+            {isAuthenticated && favCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                {favCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => handleProtectedNav("/cart")}
+            className="relative flex items-center justify-center w-10 h-10 rounded-full text-gray-300 hover:text-white"
+          >
+            <ShoppingCart className="w-5 h-5" />
+            {isAuthenticated && cartCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#F59E0B] text-[9px] font-bold text-black">
+                {cartCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="flex items-center justify-center w-10 h-10 text-white hover:text-gray-300"
+          >
+            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
       </div>
-      
+
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="absolute top-16 left-0 w-full bg-[#111827] border-t border-gray-800 p-4 flex flex-col gap-4 md:hidden shadow-xl z-50">
           <form onSubmit={handleSearch} className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input 
+            <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -217,34 +274,34 @@ export function Navbar() {
               className="w-full h-10 bg-white/10 border border-white/20 rounded-xl pl-10 pr-4 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-[#F59E0B]"
             />
           </form>
-          
+
           <div className="flex flex-col gap-1">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 mt-2 px-2">Категории</div>
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 px-2">Категории</div>
             {categories?.map((cat) => (
-                <button 
-                  key={cat} 
-                  onClick={() => navigateToCategory(cat)}
-                  className="text-left text-gray-200 text-sm hover:bg-white/10 rounded-lg px-2 py-2 capitalize transition-colors"
-                >
-                  {cat}
-                </button>
+              <button
+                key={cat}
+                onClick={() => navigateToCategory(cat)}
+                className="text-left text-gray-200 text-sm hover:bg-white/10 rounded-lg px-2 py-2 capitalize transition-colors"
+              >
+                {cat}
+              </button>
             ))}
           </div>
-          
-          <div className="h-px bg-gray-800 my-1" />
-          
+
+          <div className="h-px bg-gray-800" />
+
           {isAuthenticated ? (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-3 px-2 py-2 mb-2 bg-white/5 rounded-xl">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#F59E0B] text-black font-bold text-sm">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-3 px-2 py-2 mb-1 bg-white/5 rounded-xl">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#F59E0B] text-black font-bold text-sm shrink-0">
                   {initials}
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-white">{user?.username}</span>
-                  <span className="text-xs text-gray-400">{user?.email}</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm font-semibold text-white truncate">{user?.username}</span>
+                  <span className="text-xs text-gray-400 truncate">{user?.email}</span>
                 </div>
               </div>
-              
+
               <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)}>
                 <button className="w-full flex items-center gap-2 px-2 py-2 text-sm text-gray-200 hover:bg-white/10 rounded-lg">
                   <User className="w-4 h-4" /> Мой профиль
@@ -252,18 +309,25 @@ export function Navbar() {
               </Link>
               <Link href="/favorites" onClick={() => setIsMobileMenuOpen(false)}>
                 <button className="w-full flex items-center gap-2 px-2 py-2 text-sm text-gray-200 hover:bg-white/10 rounded-lg">
-                  <Heart className="w-4 h-4" /> Избранное
+                  <Heart className="w-4 h-4 text-red-400" /> Избранное
+                  {favCount > 0 && <span className="ml-auto text-xs bg-red-500 text-white px-1.5 py-0.5 rounded-full">{favCount}</span>}
                 </button>
               </Link>
-              <button 
-                onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }} 
+              <Link href="/cart" onClick={() => setIsMobileMenuOpen(false)}>
+                <button className="w-full flex items-center gap-2 px-2 py-2 text-sm text-gray-200 hover:bg-white/10 rounded-lg">
+                  <ShoppingCart className="w-4 h-4" /> Корзина
+                  {cartCount > 0 && <span className="ml-auto text-xs bg-[#F59E0B] text-black px-1.5 py-0.5 rounded-full font-semibold">{cartCount}</span>}
+                </button>
+              </Link>
+              <button
+                onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
                 className="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg"
               >
                 <LogOut className="w-4 h-4" /> Выйти
               </button>
             </div>
           ) : (
-            <div className="flex flex-col gap-3 mt-2">
+            <div className="flex flex-col gap-3">
               <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
                 <button className="w-full py-2.5 text-sm font-medium text-white border border-white/30 rounded-xl hover:bg-white hover:text-black transition-colors">
                   Войти
