@@ -1,0 +1,59 @@
+Build a simple e-commerce MVP with React + FastAPI + SQLite.
+
+## COLORS
+- Blue: #2563EB (buttons, links)
+- Green: #10B981 (add to cart)  
+- Gray: #6B7280 (text, borders)
+
+## BACKEND (FastAPI + SQLite)
+Create these files:
+- main.py (FastAPI app with CORS)
+- database.py (SQLAlchemy setup)
+- models.py (User, Product, Cart tables)
+- auth.py (JWT token: login returns token, bcrypt for passwords)
+- routes/auth.py (POST /register, /login)
+- routes/products.py (GET /products, /products/{id}, /categories)
+- routes/cart.py (GET /cart, POST /cart/add, DELETE /cart/remove - all require token)
+
+## FRONTEND (React + TailwindCSS)
+Create these files:
+- App.jsx (Router: /, /products, /product/:id, /cart, /login, /register)
+- contexts/AuthContext.jsx (login/logout state)
+- contexts/CartContext.jsx (cart state)
+- components/Navbar.jsx (links, cart count, username if logged in)
+- components/ProductCard.jsx (image, name, price, green "Add to cart" button)
+- pages/Products.jsx (grid of ProductCards)
+- pages/ProductDetail.jsx (details, quantity selector, add to cart)
+- pages/Cart.jsx (list items, update quantity, remove, total price)
+- pages/Login.jsx (username/email + password)
+- pages/Register.jsx (username + email + password)
+
+## DATABASE SEED (40 products)
+In main.py, after creating tables, insert 40 products:
+Categories: Electronics(10), Clothing(10), Books(5), Home(5), Sports(5), Toys(5)
+Use product names from this list:
+Electronics: Smartphone, Notebook, Tablet, Headphones, Smartwatch, Speaker, Drone, Monitor, Keyboard, Mouse
+Clothing: T-Shirt, Jeans, Jacket, Dress, Sneakers, Cap, Socks, Shorts, Sweater, Swimsuit
+Books: Python Basics, JavaScript Guide, UI Design, Clean Code, Emotional Intelligence
+Home: Rug, Pillow, Cookware, Vase, Lamp
+Sports: Soccer Ball, Tennis Racket, Jump Rope, Boxing Gloves, Water Bottle
+Toys: Doll, RC Car, Building Blocks, Puzzle, Stuffed Bear
+
+Each product: name, description "High quality product", price between 10-500, category, stock between 1-100, image_url = "https://picsum.photos/id/X/300/300" (X from 1-40)
+
+## KEY FEATURES (minimum working)
+1. User can register and login
+2. Cart only works when logged in (token required)
+3. Cart saves to database (persists after logout/login)
+4. Products filter by category (simple dropdown)
+5. Responsive: mobile 1 column, desktop 4 columns
+
+## WHAT TO SKIP (to save time/credits)
+- Search bar
+- Sorting products
+- Logout endpoint (just remove token frontend)
+- Toast notifications
+- Cart clear all button
+- Stock validation (just show stock, don't block if out of stock for simplicity)
+
+Make it working out of the box. Install all dependencies. Run backend on port 8000, frontend on port 5173 with proxy to backend.
